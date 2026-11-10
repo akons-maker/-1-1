@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f7f8fc">
+<title>우리의 영화 티어리스트</title>
+<style>
+:root{--ink:#20243a;--muted:#747b91;--line:#e8eaf1;--paper:#fff;--bg:#f7f8fc;--accent:#6258e8;--shadow:0 12px 34px rgba(37,42,75,.07)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-rounded,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif}
+button,input{font:inherit}
+.page{max-width:1120px;margin:0 auto;padding:38px 24px 56px}
+.topline{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:30px}
+.brand{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:800;letter-spacing:.04em;color:#777d93}
+.brand-mark{display:grid;place-items:center;width:34px;height:34px;border-radius:12px;background:#ecebff;color:var(--accent);font-size:18px}
+.pill{padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:#fff;color:#72788d;font-size:12px;font-weight:700}
+.hero{display:flex;justify-content:space-between;align-items:end;gap:24px;margin-bottom:25px}
+.eyebrow{margin:0 0 9px;color:var(--accent);font-size:12px;font-weight:850;letter-spacing:.13em}
+h1{margin:0;font-size:clamp(30px,5vw,46px);line-height:1.12;letter-spacing:-.055em}
+.subtitle{margin:12px 0 0;color:var(--muted);font-size:14px;line-height:1.65}
+.hero-actions{display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end}
+.btn{border:0;border-radius:13px;padding:11px 15px;font-size:13px;font-weight:800;cursor:pointer;transition:.18s transform,.18s box-shadow}
+.btn:hover{transform:translateY(-1px)}
+.btn-primary{background:var(--accent);color:#fff;box-shadow:0 7px 16px #6258e833}
+.btn-light{background:#fff;color:#525970;border:1px solid var(--line)}
+.btn-danger{background:#fff2f1;color:#c25c54;border:1px solid #ffe2df}
+.board{display:grid;gap:10px}
+.tier{display:grid;grid-template-columns:94px 1fr;min-height:112px;background:#fff;border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:0 3px 12px rgba(34,39,68,.025);transition:border-color .15s,background .15s}
+.tier-label{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:5px;color:#fff}
+.tier-letter{font-size:30px;font-weight:950;line-height:1}
+.tier-word{font-size:10px;font-weight:800;letter-spacing:.05em;opacity:.9}
+.tier-content{display:flex;align-content:center;align-items:center;flex-wrap:wrap;gap:10px;padding:15px;min-width:0}
+.tier[data-tier="S"] .tier-label{background:#f06c83}
+.tier[data-tier="A"] .tier-label{background:#f3a64e}
+.tier[data-tier="B"] .tier-label{background:#6c9ee9}
+.tier[data-tier="C"] .tier-label{background:#54b7a2}
+.tier[data-tier="D"] .tier-label{background:#9298aa}
+.tier.drag-over,.pool.drag-over{border-color:var(--accent);background:#f2f1ff}
+.empty{color:#b2b7c5;font-size:12px;padding:9px 4px}
+.movie{--movie:#dce4f8;position:relative;display:flex;align-items:center;gap:9px;min-height:49px;max-width:100%;padding:9px 12px;border:1px solid color-mix(in srgb,var(--movie),#fff 15%);border-radius:12px;background:var(--movie);color:#27304b;font-size:13px;font-weight:800;cursor:grab;user-select:none;touch-action:none;box-shadow:0 2px 5px #1c23400b}
+.movie:active{cursor:grabbing}
+.movie .dot{width:8px;height:8px;flex:0 0 8px;border-radius:50%;background:#fff9;box-shadow:inset 0 0 0 1px #25304a18}
+.movie .remove{display:grid;place-items:center;width:22px;height:22px;margin-left:2px;border:0;border-radius:7px;background:#ffffff8c;color:#47506a;font-size:15px;cursor:pointer;opacity:.65}
+.movie .remove:hover{opacity:1;background:#fff}
+.movie.dragging{opacity:.35;transform:scale(.97)}
+.pool{margin-top:20px;padding:19px 20px 20px;border:1px dashed #d8dbea;border-radius:18px;background:#fbfbfe;transition:.15s}
+.pool-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:13px}
+.pool h2{margin:0;font-size:14px;letter-spacing:-.02em}
+.pool p{margin:4px 0 0;color:var(--muted);font-size:11px}
+.count{font-size:11px;color:#9298aa;font-weight:750}
+.pool .tier-content{padding:0;min-height:52px}
+.toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:18px}
+.add-form{display:flex;gap:8px;flex:1;max-width:460px}
+.add-form input{min-width:0;flex:1;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:#fff;outline:none;font-size:13px}
+.add-form input:focus{border-color:#aaa5ff;box-shadow:0 0 0 3px #6258e81a}
+.add-form button{white-space:nowrap}
+.footnote{margin:23px 0 0;color:#a0a5b4;font-size:11px;line-height:1.6;text-align:center}
+.toast{position:fixed;left:50%;bottom:25px;transform:translate(-50%,15px);padding:11px 16px;border-radius:12px;background:#252940;color:#fff;font-size:12px;font-weight:700;opacity:0;pointer-events:none;transition:.2s;box-shadow:var(--shadow);z-index:20}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.drag-ghost{position:fixed;z-index:50;pointer-events:none;opacity:.92;transform:rotate(2deg);box-shadow:0 12px 28px #25294033}
+@media(max-width:650px){
+ .page{padding:23px 14px 38px}.topline{margin-bottom:24px}.hero{display:block}.hero-actions{justify-content:flex-start;margin-top:18px}
+ .tier{grid-template-columns:65px 1fr;min-height:94px;border-radius:15px}
+ .tier-letter{font-size:26px}.tier-word{font-size:9px}.tier-content{gap:7px;padding:10px}
+ .movie{font-size:12px;min-height:44px;padding:8px 9px;gap:7px}.movie .remove{width:20px;height:20px}
+ .pool{padding:15px}.toolbar{align-items:stretch;flex-direction:column}.add-form{max-width:none}.toolbar>.btn{align-self:flex-end}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main class="page">
+  <div class="topline">
+    <div class="brand"><span class="brand-mark">✦</span> MOVIE CLUB · TIER LIST</div>
+    <span class="pill">나만의 영화 취향 보관함</span>
+  </div>
+  <header class="hero">
+    <div>
+      <p class="eyebrow">MY MOVIE RANKING</p>
+      <h1>나의 영화 티어리스트</h1>
+      <p class="subtitle">좋아하는 영화들을 나만의 기준으로 정리해 보세요.<br>카드를 원하는 등급으로 옮기면 자동으로 저장돼요.</p>
+    </div>
+    <div class="hero-actions">
+      <button class="btn btn-light" id="publishBtn" type="button">현재 결과를 기본값으로 저장 ↗</button>
+      <button class="btn btn-danger" id="resetBtn" type="button">초기화</button>
+    </div>
+  </header>
+
+  <section class="board" id="board" aria-label="영화 등급표">
+    <div class="tier" data-tier="S"><div class="tier-label"><span class="tier-letter">S</span><span class="tier-word">인생 영화</span></div><div class="tier-content" data-drop="S"></div></div>
+    <div class="tier" data-tier="A"><div class="tier-label"><span class="tier-letter">A</span><span class="tier-word">정말 좋아요</span></div><div class="tier-content" data-drop="A"></div></div>
+    <div class="tier" data-tier="B"><div class="tier-label"><span class="tier-letter">B</span><span class="tier-word">좋아요</span></div><div class="tier-content" data-drop="B"></div></div>
+    <div class="tier" data-tier="C"><div class="tier-label"><span class="tier-letter">C</span><span class="tier-word">그럭저럭</span></div><div class="tier-content" data-drop="C"></div></div>
+    <div class="tier" data-tier="D"><div class="tier-label"><span class="tier-letter">D</span><span class="tier-word">아쉬워요</span></div><div class="tier-content" data-drop="D"></div></div>
+  </section>
+
+  <section class="pool" id="pool" data-drop="pool">
+    <div class="pool-head"><div><h2>아직 등급을 정하지 않은 영화</h2><p>카드를 끌어 위 등급표에 놓아 보세요.</p></div><span class="count" id="poolCount">0편</span></div>
+    <div class="tier-content" data-drop="pool" id="poolContent"></div>
+  </section>
+
+  <div class="toolbar">
+    <form class="add-form" id="addForm">
+      <input id="movieInput" type="text" maxlength="60" placeholder="추가할 영화 제목을 입력하세요" aria-label="추가할 영화 제목">
+      <button class="btn btn-primary" type="submit">＋ 영화 추가</button>
+    </form>
+    <span class="count" id="totalCount">총 8편</span>
+  </div>
+  <p class="footnote">이 페이지의 변경 사항은 현재 사용 중인 브라우저에 저장됩니다.<br>친구와 결과를 공유하려면 ‘현재 결과를 기본값으로 저장’을 눌러 새 HTML 파일을 전달하세요.</p>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script>
+"use strict";
+// 공유용 HTML을 만들 때 이 값이 게시 기본값으로 채워집니다.
+const PUBLISHED_DEFAULT = null;
+const STORAGE_KEY = "movie-tier-list-v1";
+const STARTER = [
+  {id:"m1",title:"기생충",tier:"pool",color:"#f6d7d4"},
+  {id:"m2",title:"인터스텔라",tier:"pool",color:"#d8e5f6"},
+  {id:"m3",title:"라라랜드",tier:"pool",color:"#f8e3ae"},
+  {id:"m4",title:"센과 치히로의 행방불명",tier:"pool",color:"#d9ecd9"},
+  {id:"m5",title:"어벤져스: 엔드게임",tier:"pool",color:"#e4dcf7"},
+  {id:"m6",title:"범죄도시",tier:"pool",color:"#f2d7b9"},
+  {id:"m7",title:"타이타닉",tier:"pool",color:"#d5e8ed"},
+  {id:"m8",title:"토이 스토리",tier:"pool",color:"#f4dce9"}
+];
+const COLORS=["#f6d7d4","#d8e5f6","#f8e3ae","#d9ecd9","#e4dcf7","#f2d7b9","#d5e8ed","#f4dce9","#dce5cb","#e8dff0"];
+let movies=[];
+let dragState=null;
+let toastTimer;
+const $=s=>document.querySelector(s);
+function clone(v){return JSON.parse(JSON.stringify(v));}
+function validList(v){return Array.isArray(v)&&v.every(x=>x&&typeof x.id==="string"&&typeof x.title==="string"&&["S","A","B","C","D","pool"].includes(x.tier));}
+function load(){
+  try{
+    const saved=localStorage.getItem(STORAGE_KEY);
+    if(saved){const parsed=JSON.parse(saved);if(validList(parsed))return parsed;}
+  }catch(e){}
+  return PUBLISHED_DEFAULT&&validList(PUBLISHED_DEFAULT)?clone(PUBLISHED_DEFAULT):clone(STARTER);
+}
+function save(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(movies));}catch(e){showToast("브라우저 저장 공간을 사용할 수 없어요.");}}
+function showToast(message){const el=$("#toast");el.textContent=message;el.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove("show"),2200);}
+function render(){
+  document.querySelectorAll("[data-drop]").forEach(el=>{if(el.classList.contains("tier-content")||el.id==="poolContent")el.innerHTML="";});
+  const groups={S:[],A:[],B:[],C:[],D:[],pool:[]};
+  movies.forEach(m=>groups[m.tier].push(m));
+  ["S","A","B","C","D","pool"].forEach(tier=>{
+    const target=document.querySelector(`[data-drop="${tier}"].tier-content`)|| (tier==="pool"?$("#poolContent"):null);
+    if(!target)return;
+    groups[tier].forEach(movie=>target.appendChild(makeCard(movie)));
+    if(!groups[tier].length&&tier!=="pool"){const empty=document.createElement("span");empty.className="empty";empty.textContent="영화를 여기에 놓아 보세요";target.appendChild(empty);}
+  });
+  $("#poolCount").textContent=groups.pool.length+"편";
+  $("#totalCount").textContent="총 "+movies.length+"편";
+}
+function makeCard(movie){
+  const card=document.createElement("article");card.className="movie";card.dataset.id=movie.id;card.style.setProperty("--movie",movie.color||"#e3e7f2");card.setAttribute("aria-label",movie.title+" 카드");
+  const dot=document.createElement("span");dot.className="dot";
+  const title=document.createElement("span");title.textContent=movie.title;
+  const remove=document.createElement("button");remove.className="remove";remove.type="button";remove.textContent="×";remove.title=movie.title+" 삭제";remove.setAttribute("aria-label",movie.title+" 삭제");
+  remove.addEventListener("pointerdown",e=>e.stopPropagation());
+  remove.addEventListener("click",e=>{e.stopPropagation();movies=movies.filter(m=>m.id!==movie.id);save();render();showToast("영화를 삭제했어요.");});
+  card.append(dot,title,remove);
+  card.addEventListener("pointerdown",startDrag);
+  return card;
+}
+function startDrag(e){
+  if(e.target.closest("button"))return;
+  if(e.pointerType==="mouse"&&e.button!==0)return;
+  const card=e.currentTarget;const rect=card.getBoundingClientRect();
+  dragState={id:card.dataset.id,pointerId:e.pointerId,startX:e.clientX,startY:e.clientY,card,offsetX:e.clientX-rect.left,offsetY:e.clientY-rect.top,moved:false,ghost:null};
+  try{card.setPointerCapture(e.pointerId);}catch(err){}
+  card.addEventListener("pointermove",moveDrag);
+  card.addEventListener("pointerup",endDrag,{once:true});
+  card.addEventListener("pointercancel",cancelDrag,{once:true});
+}
+function moveDrag(e){
+  if(!dragState||e.pointerId!==dragState.pointerId)return;
+  const dx=e.clientX-dragState.startX,dy=e.clientY-dragState.startY;
+  if(!dragState.moved&&Math.hypot(dx,dy)<7)return;
+  if(!dragState.moved){
+    dragState.moved=true;const ghost=dragState.card.cloneNode(true);ghost.classList.add("drag-ghost");ghost.style.width=dragState.card.offsetWidth+"px";document.body.appendChild(ghost);dragState.ghost=ghost;dragState.card.classList.add("dragging");
+  }
+  const g=dragState.ghost;g.style.left=(e.clientX-dragState.offsetX)+"px";g.style.top=(e.clientY-dragState.offsetY)+"px";
+  document.querySelectorAll(".drag-over").forEach(x=>x.classList.remove("drag-over"));
+  const under=document.elementFromPoint(e.clientX,e.clientY);const drop=under&&under.closest("[data-drop]");
+  if(drop){const tier=drop.dataset.drop;const zone=tier==="pool"?$("#pool"):document.querySelector(`.tier[data-tier="${tier}"]`);if(zone)zone.classList.add("drag-over");}
+  e.preventDefault();
+}
+function endDrag(e){
+  if(!dragState||e.pointerId!==dragState.pointerId)return;
+  const state=dragState;state.card.removeEventListener("pointermove",moveDrag);
+  if(state.moved){
+    const under=document.elementFromPoint(e.clientX,e.clientY);const drop=under&&under.closest("[data-drop]");
+    if(drop){const movie=movies.find(m=>m.id===state.id);if(movie){movie.tier=drop.dataset.drop;save();}}
+  }
+  cleanupDrag();if(state.moved)render();
+}
+function cancelDrag(){if(dragState){dragState.card.removeEventListener("pointermove",moveDrag);cleanupDrag();}}
+function cleanupDrag(){if(dragState?.ghost)dragState.ghost.remove();document.querySelectorAll(".drag-over").forEach(x=>x.classList.remove("drag-over"));document.querySelectorAll(".dragging").forEach(x=>x.classList.remove("dragging"));dragState=null;}
+$("#addForm").addEventListener("submit",e=>{
+  e.preventDefault();const input=$("#movieInput");const title=input.value.trim();if(!title){input.focus();return;}
+  if(movies.some(m=>m.title.toLocaleLowerCase()===title.toLocaleLowerCase())){showToast("이미 목록에 있는 영화예요.");return;}
+  movies.push({id:"m"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),title,tier:"pool",color:COLORS[movies.length%COLORS.length]});input.value="";save();render();showToast("영화를 추가했어요.");
+});
+$("#resetBtn").addEventListener("click",()=>{
+  if(!confirm("현재 정한 등급을 초기화할까요? 게시된 기본 결과로 돌아갑니다."))return;
+  movies=PUBLISHED_DEFAULT&&validList(PUBLISHED_DEFAULT)?clone(PUBLISHED_DEFAULT):clone(STARTER);save();render();showToast("기본 상태로 초기화했어요.");
+});
+$("#publishBtn").addEventListener("click",()=>{
+  const source="<!doctype html>\n"+document.documentElement.outerHTML;
+  const marker="const PUBLISHED_DEFAULT = null;";
+  const replacement="const PUBLISHED_DEFAULT = "+JSON.stringify(movies)+";";
+  if(!source.includes(marker)){showToast("기본값을 저장하지 못했어요.");return;}
+  const output=source.replace(marker,replacement);
+  const blob=new Blob([output],{type:"text/html;charset=utf-8"});
+  const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="나의-영화-티어리스트.html";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
+  showToast("현재 결과가 기본값인 HTML 파일을 저장했어요.");
+});
+movies=load();render();
+</script>
+</body>
+</html>

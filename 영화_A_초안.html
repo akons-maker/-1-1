@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>내 영화 티어리스트</title>
+<style>
+:root{
+  color-scheme:light;
+  --bg:#f2f6ff; --ink:#1d2140; --sub:#5d6489; --line:#dfe5f7; --panel:#fff;
+  --S:#ff6b6b; --A:#ffa94d; --B:#ffd43b; --C:#69db7c; --D:#4dabf7;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Pretendard","Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;
+  line-height:1.5;padding:20px 14px 48px}
+.wrap{max-width:760px;margin:0 auto}
+h1{font-size:clamp(26px,6vw,38px);font-weight:900;letter-spacing:-.03em;margin:4px 0 6px}
+.lead{margin:0 0 18px;color:var(--sub);font-size:15px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+form{display:flex;gap:8px;flex:1 1 280px}
+input{flex:1;min-width:0;font:inherit;font-size:16px;padding:10px 14px;border:2px solid var(--line);border-radius:12px;background:#fff;color:var(--ink)}
+input:focus{outline:3px solid #9bb7ff;outline-offset:1px;border-color:#9bb7ff}
+button{font:inherit;font-weight:700;border:0;border-radius:12px;padding:10px 16px;cursor:pointer;background:var(--ink);color:#fff}
+button.ghost{background:#fff;color:var(--ink);border:2px solid var(--line)}
+button:focus-visible{outline:3px solid #9bb7ff;outline-offset:2px}
+#msg{min-height:22px;margin:-6px 0 10px;font-size:14px;color:#c2410c}
+.row{display:flex;background:var(--panel);border-radius:16px;margin-bottom:10px;overflow:hidden;border:2px solid var(--line)}
+.label{flex:0 0 64px;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:900;color:var(--ink)}
+.zone{flex:1;display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start;padding:10px;min-height:64px}
+.row.over{border-color:#7c9cff;background:#f6f9ff}
+.pool{display:block;margin-top:22px}
+.pool h2{margin:0;padding:12px 14px 0;font-size:16px}
+.pool .zone{min-height:72px}
+.pool .zone:empty::before{content:attr(data-empty);color:var(--sub);font-size:14px;padding:6px 4px}
+.card{position:relative;display:flex;align-items:center;gap:6px;max-width:100%;
+  padding:9px 6px 9px 12px;border-radius:10px;font-weight:700;font-size:15px;line-height:1.25;
+  background:hsl(var(--h) 90% 91%);color:hsl(var(--h) 45% 20%);
+  border:2px solid hsl(var(--h) 70% 76%);border-left:8px solid hsl(var(--h) 75% 58%);
+  cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.card .t{overflow-wrap:anywhere}
+.del{padding:0;width:26px;height:26px;border-radius:50%;background:transparent;color:inherit;font-size:18px;line-height:1;opacity:.55}
+.del:hover{opacity:1;background:rgba(0,0,0,.08)}
+.card.dragging{opacity:.3}
+.ghost-card{position:fixed;left:0;top:0;z-index:99;pointer-events:none;box-shadow:0 10px 24px rgba(29,33,64,.25);transform-origin:0 0;rotate:-2deg}
+.marker{flex:0 0 4px;align-self:stretch;min-height:36px;border-radius:2px;background:var(--ink)}
+@media (max-width:480px){.label{flex-basis:50px;font-size:26px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>내 영화 티어리스트</h1>
+  <p class="lead">카드를 끌어서 등급에 놓아 보세요. 정한 등급은 이 기기에 자동으로 저장돼요.</p>
+  <div class="bar">
+    <form id="addForm">
+      <input id="title" type="text" maxlength="40" placeholder="추가할 영화 제목" autocomplete="off" aria-label="추가할 영화 제목">
+      <button type="submit">추가</button>
+    </form>
+    <button type="button" class="ghost" id="reset">초기화</button>
+  </div>
+  <div id="msg" role="status"></div>
+  <div id="board"></div>
+  <section class="row pool zonewrap" style="flex-direction:column">
+    <h2>아직 안 정한 영화</h2>
+    <div class="zone" data-zone="pool" data-empty="모든 영화를 등급에 놓았어요."></div>
+  </section>
+</div>
+
+<script>
+const TIERS = ['S','A','B','C','D'];
+const COLORS = {S:'var(--S)',A:'var(--A)',B:'var(--B)',C:'var(--C)',D:'var(--D)'};
+const MOVIES = ['기생충','인터스텔라','라라랜드','센과 치히로의 행방불명','어벤져스: 엔드게임','범죄도시','타이타닉','토이 스토리'];
+
+/* 내 결과: 등급을 정하면 영화 제목을 해당 등급 칸에 적어 넣으세요.
+   예) S:['기생충','인터스텔라'] — 적지 않은 영화는 '아직 안 정한 영화'에 남고,
+   초기화 버튼을 누르면 이 상태로 돌아옵니다. */
+const MY_RESULT = { S:[], A:[], B:[], C:[], D:[] };
+
+const KEY = 'movieTierlist.v1';
+let state;
+const zones = {};
+
+function addMovie(s, title){
+  const id = 'm' + (++s.n);
+  s.movies[id] = { title, hue: Math.round((s.n * 137.5) % 360) };
+  return id;
+}
+function makeDefault(){
+  const s = { movies:{}, tiers:{S:[],A:[],B:[],C:[],D:[],pool:[]}, n:0 };
+  const byTitle = {};
+  MOVIES.forEach(t => { byTitle[t] = addMovie(s, t); });
+  const placed = new Set();
+  TIERS.forEach(k => (MY_RESULT[k] || []).forEach(t => {
+    const id = byTitle[t];
+    if (id && !placed.has(id)) { s.tiers[k].push(id); placed.add(id); }
+  }));
+  MOVIES.forEach(t => { if (!placed.has(byTitle[t])) s.tiers.pool.push(byTitle[t]); });
+  return s;
+}
+function valid(s){
+  if (!s || !s.movies || !s.tiers || typeof s.n !== 'number') return false;
+  const seen = new Set();
+  for (const k of [...TIERS, 'pool']) {
+    if (!Array.isArray(s.tiers[k])) return false;
+    for (const id of s.tiers[k]) {
+      if (!s.movies[id] || seen.has(id)) return false;
+      seen.add(id);
+    }
+  }
+  return seen.size === Object.keys(s.movies).length;
+}
+function load(){
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) { const s = JSON.parse(raw); if (valid(s)) return s; }
+  } catch (e) {}
+  return makeDefault();
+}
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+
+function cardEl(id){
+  const m = state.movies[id];
+  const c = document.createElement('div');
+  c.className = 'card'; c.dataset.id = id; c.style.setProperty('--h', m.hue);
+  const t = document.createElement('span'); t.className = 't'; t.textContent = m.title;
+  const d = document.createElement('button');
+  d.type = 'button'; d.className = 'del'; d.textContent = '×';
+  d.setAttribute('aria-label', m.title + ' 삭제'); d.title = '삭제';
+  c.append(t, d);
+  return c;
+}
+function render(){
+  for (const k of [...TIERS, 'pool']) {
+    const z = zones[k]; z.textContent = '';
+    state.tiers[k].forEach(id => z.appendChild(cardEl(id)));
+  }
+}
+function setMsg(t){ document.getElementById('msg').textContent = t || ''; }
+
+/* 화면 뼈대 */
+const board = document.getElementById('board');
+TIERS.forEach(k => {
+  const row = document.createElement('div'); row.className = 'row zonewrap';
+  const lb = document.createElement('div'); lb.className = 'label'; lb.textContent = k; lb.style.background = COLORS[k];
+  const z = document.createElement('div'); z.className = 'zone'; z.dataset.zone = k;
+  row.append(lb, z); board.appendChild(row); zones[k] = z;
+});
+zones.pool = document.querySelector('[data-zone="pool"]');
+
+/* 끌어다 놓기 (마우스·터치 공통) */
+let drag = null;
+const marker = document.createElement('div'); marker.className = 'marker';
+
+function locate(x, y){
+  const el = document.elementFromPoint(x, y);
+  const wrap = el && el.closest('.zonewrap');
+  if (!wrap) return null;
+  const zone = wrap.querySelector('.zone');
+  const cards = [...zone.querySelectorAll('.card:not(.dragging)')];
+  let index = cards.length, before = null;
+  for (let i = 0; i < cards.length; i++) {
+    const r = cards[i].getBoundingClientRect();
+    if (y < r.top || (y <= r.bottom && x < r.left + r.width / 2)) { index = i; before = cards[i]; break; }
+  }
+  return { wrap, zone, key: zone.dataset.zone, index, before };
+}
+function clearOver(){ document.querySelectorAll('.over').forEach(e => e.classList.remove('over')); }
+
+document.addEventListener('pointerdown', e => {
+  const card = e.target.closest('.card');
+  if (!card || e.target.closest('.del') || (e.pointerType === 'mouse' && e.button !== 0)) return;
+  e.preventDefault();
+  const r = card.getBoundingClientRect();
+  const ghost = card.cloneNode(true);
+  ghost.classList.add('ghost-card'); ghost.style.width = r.width + 'px';
+  document.body.appendChild(ghost);
+  drag = { id: card.dataset.id, card, ghost, dx: e.clientX - r.left, dy: e.clientY - r.top, loc: null };
+  card.classList.add('dragging');
+  onMove(e);
+  window.addEventListener('pointermove', onMove);
+  window.addEventListener('pointerup', onUp);
+  window.addEventListener('pointercancel', onCancel);
+});
+function onMove(e){
+  if (!drag) return;
+  drag.ghost.style.transform = `translate(${e.clientX - drag.dx}px, ${e.clientY - drag.dy}px)`;
+  if (e.clientY < 70) window.scrollBy(0, -14);
+  else if (e.clientY > window.innerHeight - 70) window.scrollBy(0, 14);
+  clearOver();
+  const loc = locate(e.clientX, e.clientY);
+  drag.loc = loc;
+  if (loc) {
+    loc.wrap.classList.add('over');
+    loc.zone.insertBefore(marker, loc.before);
+  } else marker.remove();
+}
+function endDrag(){
+  window.removeEventListener('pointermove', onMove);
+  window.removeEventListener('pointerup', onUp);
+  window.removeEventListener('pointercancel', onCancel);
+  drag.ghost.remove(); marker.remove(); clearOver();
+  drag.card.classList.remove('dragging');
+}
+function onUp(){
+  if (!drag) return;
+  const { id, loc } = drag;
+  endDrag(); drag = null;
+  if (!loc) return;
+  for (const k of [...TIERS, 'pool']) state.tiers[k] = state.tiers[k].filter(x => x !== id);
+  state.tiers[loc.key].splice(loc.index, 0, id);
+  save(); render();
+}
+function onCancel(){ if (!drag) return; endDrag(); drag = null; }
+
+/* 삭제 · 추가 · 초기화 */
+document.addEventListener('click', e => {
+  const d = e.target.closest('.del');
+  if (!d) return;
+  const id = d.closest('.card').dataset.id;
+  delete state.movies[id];
+  for (const k of [...TIERS, 'pool']) state.tiers[k] = state.tiers[k].filter(x => x !== id);
+  setMsg(''); save(); render();
+});
+document.getElementById('addForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const input = document.getElementById('title');
+  const title = input.value.trim();
+  if (!title) { setMsg('영화 제목을 입력해 주세요.'); return; }
+  if (Object.values(state.movies).some(m => m.title === title)) { setMsg('이미 있는 영화예요.'); return; }
+  state.tiers.pool.push(addMovie(state, title));
+  input.value = ''; setMsg(''); save(); render();
+});
+document.getElementById('reset').addEventListener('click', () => {
+  if (!confirm('모든 영화를 처음 상태로 되돌릴까요? 추가한 영화는 사라져요.')) return;
+  state = makeDefault(); setMsg(''); save(); render();
+});
+
+state = load();
+render();
+</script>
+</body>
+</html>
